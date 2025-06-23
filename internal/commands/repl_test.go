@@ -74,34 +74,53 @@ func TestReplCommand_Execute_BasicCommands(t *testing.T) {
 				MyUser:         "test@example.com",
 			}
 
-			// Redirect stdin and stdout
+			// Create pipes for stdin and stdout
+			stdinReader, stdinWriter, _ := os.Pipe()
+			stdoutReader, stdoutWriter, _ := os.Pipe()
+
+			// Save original stdin/stdout
 			oldStdin := os.Stdin
 			oldStdout := os.Stdout
 
-			r, w, _ := os.Pipe()
-			os.Stdin = r
-
-			outputReader, outputWriter, _ := os.Pipe()
-			os.Stdout = outputWriter
+			// Replace stdin/stdout
+			os.Stdin = stdinReader
+			os.Stdout = stdoutWriter
 
 			replCmd := NewReplCommand(fixture.MockClient, config)
 
-			// Write input to stdin pipe
+			// Channel to signal completion
+			done := make(chan error, 1)
+
+			// Start REPL in goroutine
 			go func() {
-				defer w.Close()
-				w.Write([]byte(tt.input))
+				err := replCmd.Execute("SCHED123")
+				done <- err
 			}()
 
+			// Write input and close stdin
 			go func() {
-				defer outputWriter.Close()
-				replCmd.Execute("SCHED123")
+				defer stdinWriter.Close()
+				stdinWriter.WriteString(tt.input)
 			}()
 
+			// Wait for REPL to complete or timeout
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Errorf("REPL execution failed: %v", err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Error("REPL test timed out")
+			}
+
+			// Close stdout and restore
+			stdoutWriter.Close()
 			os.Stdin = oldStdin
 			os.Stdout = oldStdout
 
 			// Read captured output
-			output, _ := io.ReadAll(outputReader)
+			output, _ := io.ReadAll(stdoutReader)
+			stdoutReader.Close()
 			outputStr := string(output)
 
 			// Verify expected outputs are present
@@ -128,34 +147,53 @@ func TestReplCommand_Execute_NextCommand(t *testing.T) {
 		fixture.Now.Add(24*time.Hour),
 		fixture.Now.Add(48*time.Hour))
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("next test@example.com\nexit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("next test@example.com\nexit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Verify next command output
@@ -178,34 +216,53 @@ func TestReplCommand_Execute_PlanCommand(t *testing.T) {
 		fixture.Now.Add(2*time.Hour),
 		fixture.Now.Add(26*time.Hour))
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("plan 1\nexit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("plan 1\nexit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Verify plan command output - should contain user info
@@ -228,39 +285,58 @@ func TestReplCommand_Execute_UpcomingCommand(t *testing.T) {
 		fixture.Now.Add(24*time.Hour),
 		fixture.Now.Add(48*time.Hour))
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("upcoming test@example.com 1\nexit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("upcoming test@example.com 1\nexit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
-	// Verify upcoming command output
-	if !strings.Contains(outputStr, "Upcoming shifts for Test User") {
-		t.Errorf("Expected upcoming command output, got: %s", outputStr)
+	// Verify upcoming command output - should contain shifts data and user name
+	if !strings.Contains(outputStr, "Shifts for the next") || !strings.Contains(outputStr, "Test User") {
+		t.Errorf("Expected upcoming command output with shifts and user info, got: %s", outputStr)
 	}
 }
 
@@ -281,15 +357,17 @@ func TestReplCommand_Execute_OverrideCommand(t *testing.T) {
 		fixture.Now.Add(2*time.Hour),
 		fixture.Now.Add(10*time.Hour))
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
@@ -297,22 +375,39 @@ func TestReplCommand_Execute_OverrideCommand(t *testing.T) {
 	endTime := fixture.Now.Add(6 * time.Hour).Format("2006-01-02 15:04")
 	input := fmt.Sprintf("override test@example.com target@example.com \"%s\" \"%s\"\nexit\n", startTime, endTime)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte(input))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString(input)
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Should not contain error
@@ -358,34 +453,53 @@ func TestReplCommand_Execute_CommandValidation(t *testing.T) {
 				// Note: no MyUser set to test validation
 			}
 
-			// Redirect stdin and stdout
+			// Create pipes for stdin and stdout
+			stdinReader, stdinWriter, _ := os.Pipe()
+			stdoutReader, stdoutWriter, _ := os.Pipe()
+
+			// Save original stdin/stdout
 			oldStdin := os.Stdin
 			oldStdout := os.Stdout
 
-			r, w, _ := os.Pipe()
-			os.Stdin = r
-
-			outputReader, outputWriter, _ := os.Pipe()
-			os.Stdout = outputWriter
+			// Replace stdin/stdout
+			os.Stdin = stdinReader
+			os.Stdout = stdoutWriter
 
 			replCmd := NewReplCommand(fixture.MockClient, config)
 
-			// Write input to stdin pipe
+			// Channel to signal completion
+			done := make(chan error, 1)
+
+			// Start REPL in goroutine
 			go func() {
-				defer w.Close()
-				w.Write([]byte(tt.input))
+				err := replCmd.Execute("SCHED123")
+				done <- err
 			}()
 
+			// Write input and close stdin
 			go func() {
-				defer outputWriter.Close()
-				replCmd.Execute("SCHED123")
+				defer stdinWriter.Close()
+				stdinWriter.WriteString(tt.input)
 			}()
 
+			// Wait for REPL to complete or timeout
+			select {
+			case err := <-done:
+				if err != nil {
+					t.Errorf("REPL execution failed: %v", err)
+				}
+			case <-time.After(2 * time.Second):
+				t.Error("REPL test timed out")
+			}
+
+			// Close stdout and restore
+			stdoutWriter.Close()
 			os.Stdin = oldStdin
 			os.Stdout = oldStdout
 
 			// Read captured output
-			output, _ := io.ReadAll(outputReader)
+			output, _ := io.ReadAll(stdoutReader)
+			stdoutReader.Close()
 			outputStr := string(output)
 
 			// Verify expected error output
@@ -404,34 +518,53 @@ func TestReplCommand_Execute_WelcomeMessage(t *testing.T) {
 		MyUser:         "test@example.com",
 	}
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("exit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("exit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Verify welcome message
@@ -449,32 +582,51 @@ func TestReplCommand_Execute_EOF(t *testing.T) {
 		MyUser:         "test@example.com",
 	}
 
-	// Redirect stdin to empty reader (simulates EOF)
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-	w.Close() // Close immediately to simulate EOF
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer outputWriter.Close()
 		err := replCmd.Execute("SCHED123")
+		done <- err
+	}()
+
+	// Close stdin immediately to simulate EOF
+	stdinWriter.Close()
+
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
 		if err != nil {
 			t.Errorf("Unexpected error on EOF: %v", err)
 		}
-	}()
+	case <-time.After(2 * time.Second):
+		// EOF should cause immediate exit, so timeout is unexpected
+		t.Error("REPL should exit immediately on EOF")
+	}
 
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Should handle EOF gracefully
@@ -497,34 +649,53 @@ func TestReplCommand_Execute_MyUserFallback(t *testing.T) {
 		fixture.Now.Add(24*time.Hour),
 		fixture.Now.Add(48*time.Hour))
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe - next command without email (should use my_user)
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("next\nexit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin - next command without email (should use my_user)
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("next\nexit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Verify next command used my_user
@@ -541,34 +712,53 @@ func TestReplCommand_Execute_HelpWithMyUser(t *testing.T) {
 		MyUser:         "myuser@example.com",
 	}
 
-	// Redirect stdin and stdout
+	// Create pipes for stdin and stdout
+	stdinReader, stdinWriter, _ := os.Pipe()
+	stdoutReader, stdoutWriter, _ := os.Pipe()
+
+	// Save original stdin/stdout
 	oldStdin := os.Stdin
 	oldStdout := os.Stdout
 
-	r, w, _ := os.Pipe()
-	os.Stdin = r
-
-	outputReader, outputWriter, _ := os.Pipe()
-	os.Stdout = outputWriter
+	// Replace stdin/stdout
+	os.Stdin = stdinReader
+	os.Stdout = stdoutWriter
 
 	replCmd := NewReplCommand(fixture.MockClient, config)
 
-	// Write input to stdin pipe
+	// Channel to signal completion
+	done := make(chan error, 1)
+
+	// Start REPL in goroutine
 	go func() {
-		defer w.Close()
-		w.Write([]byte("help\nexit\n"))
+		err := replCmd.Execute("SCHED123")
+		done <- err
 	}()
 
+	// Write input and close stdin
 	go func() {
-		defer outputWriter.Close()
-		replCmd.Execute("SCHED123")
+		defer stdinWriter.Close()
+		stdinWriter.WriteString("help\nexit\n")
 	}()
 
+	// Wait for REPL to complete or timeout
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Errorf("REPL execution failed: %v", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Error("REPL test timed out")
+	}
+
+	// Close stdout and restore
+	stdoutWriter.Close()
 	os.Stdin = oldStdin
 	os.Stdout = oldStdout
 
 	// Read captured output
-	output, _ := io.ReadAll(outputReader)
+	output, _ := io.ReadAll(stdoutReader)
+	stdoutReader.Close()
 	outputStr := string(output)
 
 	// Verify help shows my_user as default

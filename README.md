@@ -1,8 +1,10 @@
-# myshift-go
+# MyShift
 
-A Go implementation of myshift - a command-line tool for managing PagerDuty on-call schedules.
+[![Build Status](https://github.com/jdcasey/myshift-go/workflows/CI/badge.svg)](https://github.com/jdcasey/myshift-go/actions)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![GitHub Release](https://img.shields.io/github/release/jdcasey/myshift-go.svg)](https://github.com/jdcasey/myshift-go/releases)
 
-This is a functional translation of the original Python [myshift](../myshift) tool, preserving all core functionality while leveraging Go's strengths for performance and deployment.
+MyShift is a PagerDuty client for managing on-call shifts. It's written in Go.
 
 ## Features
 
@@ -173,6 +175,28 @@ go build -o myshift ./cmd/myshift
 go test ./...
 ```
 
+### Pre-PR Validation
+
+Before creating pull requests, use the `pr-preflight` script to run the same checks locally that will run in CI:
+
+```bash
+# Run all PR checks locally
+./pr-preflight
+
+# Show what checks will be performed
+./pr-preflight --help
+```
+
+The script performs these checks:
+- **Linting**: golangci-lint with project configuration
+- **Testing**: Full test suite with race detection and coverage
+- **Building**: Binary compilation and basic functionality tests
+- **Security**: Static analysis with gosec
+- **Dependencies**: Vulnerability scanning with nancy
+- **Container**: Docker/Podman build verification
+
+This catches issues early and ensures your PR will pass the automated checks.
+
 ### Cross-compilation
 
 ```bash
@@ -186,9 +210,26 @@ GOOS=darwin GOARCH=amd64 go build -o myshift-darwin ./cmd/myshift
 GOOS=windows GOARCH=amd64 go build -o myshift.exe ./cmd/myshift
 ```
 
+## Contributing
+
+We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to:
+
+- Report bugs and request features
+- Set up your development environment  
+- Submit pull requests
+- Follow our coding standards
+
+Please also read our [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## Community
+
+- **Issues**: [GitHub Issues](https://github.com/jdcasey/myshift-go/issues) for bug reports and feature requests
+- **Discussions**: [GitHub Discussions](https://github.com/jdcasey/myshift-go/discussions) for questions and community chat
+- **Security**: See [Security Policy](SECURITY.md) for reporting vulnerabilities
+
 ## License
 
-Licensed under the Apache License, Version 2.0. See [LICENSE](../LICENSE) for details.
+Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for details.
 
 ## Comparison with Python Version
 

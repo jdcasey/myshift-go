@@ -30,6 +30,15 @@ import (
 )
 
 // getConfigPaths returns the list of possible configuration file paths in order of precedence.
+// This function handles platform-specific configuration directory detection and supports
+// XDG Base Directory Specification on Linux systems.
+//
+// The search order prioritizes user-specific locations and follows platform conventions:
+//   - Linux: Respects XDG_CONFIG_HOME environment variable, falls back to ~/.config
+//   - macOS: Uses the standard Application Support directory
+//   - Other platforms: Uses the Linux behavior as a reasonable default
+//
+// Returns a slice of absolute file paths to check for configuration files.
 func getConfigPaths() []string {
 	var paths []string
 
@@ -56,12 +65,21 @@ func getConfigPaths() []string {
 // configPathsFunc is a variable that can be overridden for testing
 var configPathsFunc = getConfigPaths
 
-// Load loads configuration from the first available config file.
+// Load attempts to load configuration from the first available config file
+// in the standard platform-specific locations. It searches for YAML configuration
+// files in order of precedence and loads the first one found.
 //
 // The configuration file should be a YAML file containing:
-// - pagerduty_token: Required API token for PagerDuty
-// - my_user: Optional user ID or email for the current user
-// - schedule_id: Optional default schedule ID
+//   - pagerduty_token: Required API token for PagerDuty (string)
+//   - my_user: Optional user ID or email for the current user (string)
+//   - schedule_id: Optional default schedule ID (string)
+//
+// Search locations (in order):
+//   - Linux: $XDG_CONFIG_HOME/myshift.yaml or ~/.config/myshift.yaml
+//   - macOS: ~/Library/Application Support/myshift.yaml
+//
+// Returns a validated Config object or an error if no config file is found
+// or if the configuration is invalid.
 func Load() (*myshift.Config, error) {
 	for _, path := range configPathsFunc() {
 		if _, err := os.Stat(path); err == nil {
@@ -72,7 +90,15 @@ func Load() (*myshift.Config, error) {
 	return nil, fmt.Errorf("no configuration file found. Please create one using 'myshift config --print'")
 }
 
-// loadFromFile loads configuration from a specific file path.
+// loadFromFile loads and validates configuration from a specific file path.
+// It reads the YAML file, unmarshals it into a Config struct, and validates
+// that all required fields are present and valid.
+//
+// Parameters:
+//   - path: The file system path to the YAML configuration file
+//
+// Returns a validated Config object or an error if the file cannot be read,
+// parsed, or if validation fails.
 func loadFromFile(path string) (*myshift.Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -91,7 +117,17 @@ func loadFromFile(path string) (*myshift.Config, error) {
 	return &config, nil
 }
 
-// validate validates the configuration parameters.
+// validate performs validation checks on a loaded configuration object.
+// It ensures that all required fields are present and non-empty, and that
+// optional fields conform to expected formats when provided.
+//
+// Currently validates:
+//   - pagerduty_token: Must be present and non-empty
+//
+// Parameters:
+//   - config: The Config object to validate
+//
+// Returns nil if validation passes, or an error describing the validation failure.
 func validate(config *myshift.Config) error {
 	if config.PagerDutyToken == "" {
 		return fmt.Errorf("'pagerduty_token' is required in configuration")
@@ -100,7 +136,15 @@ func validate(config *myshift.Config) error {
 	return nil
 }
 
-// PrintSample prints a sample configuration file to stdout.
+// PrintSample outputs a well-documented sample configuration file to stdout.
+// This function is used by the 'myshift config --print' command to help users
+// create their initial configuration file with proper formatting and comments
+// explaining each field.
+//
+// The sample includes:
+//   - Comments explaining file placement locations
+//   - All available configuration options with examples
+//   - Helpful usage notes for each field
 func PrintSample() {
 	sample := `# MyShift Configuration
 # This file should be placed in one of the following locations:
@@ -120,23 +164,43 @@ pagerduty_token: "your-pagerduty-token"
 	fmt.Print(sample)
 }
 
-// GetConfigPaths returns the list of configuration file paths (exported for CLI usage).
+// GetConfigPaths returns the list of platform-specific configuration file paths
+// in order of precedence. This function is exported for use by CLI commands
+// that need to display configuration file locations to users.
+//
+// Returns a slice of file paths where configuration files are searched for,
+// ordered from highest to lowest precedence.
 func GetConfigPaths() []string {
 	return getConfigPaths()
 }
 
-// ValidationResult represents the result of configuration validation.
+// ValidationResult represents the comprehensive result of configuration validation.
+// It provides detailed information about configuration file discovery, field validation,
+// errors, warnings, and guidance for fixing configuration issues.
 type ValidationResult struct {
-	ConfigPath      string          // Path to the config file that was found
-	Valid           bool            // Whether the configuration is valid
-	Errors          []string        // Validation errors
-	Warnings        []string        // Validation warnings
+	ConfigPath      string          // Path to the config file that was found (empty if none found)
+	Valid           bool            // Whether the configuration is valid and usable
+	Errors          []string        // Critical validation errors that prevent usage
+	Warnings        []string        // Non-critical warnings about missing optional fields
 	RequiredFields  map[string]bool // Required fields and whether they're present
 	OptionalFields  map[string]bool // Optional fields and whether they're present
-	ConfigLocations []string        // All locations that were checked
+	ConfigLocations []string        // All locations that were searched for config files
 }
 
-// ValidateConfig performs detailed validation of the configuration and returns comprehensive results.
+// ValidateConfig performs comprehensive validation of the configuration and returns
+// detailed results including file discovery, field validation, and helpful guidance.
+// This function is used by the 'myshift config --validate' command to provide
+// users with actionable feedback about their configuration.
+//
+// The validation process:
+//  1. Searches for configuration files in standard locations
+//  2. Attempts to load and parse the found configuration
+//  3. Validates required and optional fields
+//  4. Generates helpful error messages and warnings
+//  5. Provides next steps for fixing issues
+//
+// Returns a ValidationResult with comprehensive information, or an error if
+// the validation process itself fails (distinct from configuration errors).
 func ValidateConfig() (*ValidationResult, error) {
 	result := &ValidationResult{
 		RequiredFields:  make(map[string]bool),
