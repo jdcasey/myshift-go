@@ -1,0 +1,41 @@
+# Git and version control
+.git/
+.gitignore
+
+# Build artifacts
+myshift
+myshift.exe
+*.tar
+*.tar.gz
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Documentation and docs
+docs/
+*.md
+!README.md
+
+# Test files
+*_test.go
+coverage.out
+coverage.html
+
+# GitHub workflows (not needed in container)
+.github/
+
+# Local development
+.env
+.env.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Container images
+*.tar
+*.tar.gz 

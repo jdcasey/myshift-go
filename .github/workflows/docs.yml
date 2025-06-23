@@ -1,0 +1,94 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.21'
+        cache: true
+    
+    - name: Generate Go documentation
+      run: |
+        mkdir -p docs/
+        echo "# MyShift-Go Documentation" > docs/index.md
+        echo "" >> docs/index.md
+        cat README.md >> docs/index.md
+        echo "" >> docs/index.md
+        echo "## API Documentation" >> docs/index.md
+        echo "" >> docs/index.md
+        go doc -all ./pkg/myshift >> docs/api.txt || true
+        go doc -all ./internal/commands >> docs/commands.txt || true
+        go doc -all ./internal/config >> docs/config.txt || true
+        go doc -all ./internal/pagerduty >> docs/pagerduty.txt || true
+    
+    - name: Convert to HTML
+      run: |
+        # Create a simple HTML version
+        cat > docs/index.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>MyShift-Go Documentation</title>
+            <meta charset="UTF-8">
+            <style>
+                body { font-family: Arial, sans-serif; margin: 40px; }
+                pre { background: #f4f4f4; padding: 10px; overflow-x: auto; }
+                code { background: #f4f4f4; padding: 2px 4px; }
+            </style>
+        </head>
+        <body>
+        EOF
+        
+        # Convert markdown to basic HTML (simple substitutions)
+        sed 's/^# \(.*\)/<h1>\1<\/h1>/' docs/index.md | \
+        sed 's/^## \(.*\)/<h2>\1<\/h2>/' | \
+        sed 's/^### \(.*\)/<h3>\1<\/h3>/' | \
+        sed 's/```\(.*\)/<pre><code>/' | \
+        sed 's/```/<\/code><\/pre>/' | \
+        sed 's/`\([^`]*\)`/<code>\1<\/code>/g' >> docs/index.html
+        
+        echo "</body></html>" >> docs/index.html
+    
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: documentation
+        path: docs/
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    steps:
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: documentation
+        path: docs/
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Upload to Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: docs/
+    
+    - name: Deploy to GitHub Pages
+      uses: actions/deploy-pages@v4 
