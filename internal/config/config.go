@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 
 	"github.com/jdcasey/myshift-go/pkg/myshift"
 	"gopkg.in/yaml.v3"
@@ -93,6 +94,7 @@ func Load() (*myshift.Config, error) {
 // loadFromFile loads and validates configuration from a specific file path.
 // It reads the YAML file, unmarshals it into a Config struct, and validates
 // that all required fields are present and valid.
+// The function validates the file path to prevent directory traversal attacks.
 //
 // Parameters:
 //   - path: The file system path to the YAML configuration file
@@ -100,18 +102,29 @@ func Load() (*myshift.Config, error) {
 // Returns a validated Config object or an error if the file cannot be read,
 // parsed, or if validation fails.
 func loadFromFile(path string) (*myshift.Config, error) {
-	data, err := os.ReadFile(path)
+	// Validate and clean the file path to prevent directory traversal attacks
+	cleanPath := filepath.Clean(path)
+	if cleanPath != path {
+		return nil, fmt.Errorf("invalid file path: %s", path)
+	}
+
+	// Additional validation: ensure the path doesn't contain directory traversal patterns
+	if strings.Contains(cleanPath, "..") {
+		return nil, fmt.Errorf("directory traversal not allowed in path: %s", path)
+	}
+
+	data, err := os.ReadFile(cleanPath)
 	if err != nil {
-		return nil, fmt.Errorf("error reading config file %s: %w", path, err)
+		return nil, fmt.Errorf("error reading config file %s: %w", cleanPath, err)
 	}
 
 	var config myshift.Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
-		return nil, fmt.Errorf("error parsing config file %s: %w", path, err)
+		return nil, fmt.Errorf("error parsing config file %s: %w", cleanPath, err)
 	}
 
 	if err := validate(&config); err != nil {
-		return nil, fmt.Errorf("invalid configuration in %s: %w", path, err)
+		return nil, fmt.Errorf("invalid configuration in %s: %w", cleanPath, err)
 	}
 
 	return &config, nil

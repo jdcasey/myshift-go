@@ -245,10 +245,10 @@ func (c *Client) GetOnCalls(params url.Values) ([]myshift.OnCall, error) {
 
 		var onCallsResp OnCallsResponse
 		if err := json.NewDecoder(resp.Body).Decode(&onCallsResp); err != nil {
-			resp.Body.Close()
+			_ = resp.Body.Close() // Explicitly ignore error during error handling
 			return nil, fmt.Errorf("error decoding response: %w", err)
 		}
-		resp.Body.Close()
+		_ = resp.Body.Close() // Explicitly ignore error - response already processed
 
 		allOnCalls = append(allOnCalls, onCallsResp.OnCalls...)
 

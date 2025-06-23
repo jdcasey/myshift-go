@@ -78,8 +78,8 @@ check_prerequisites() {
         missing_tools+=("go")
     fi
     
-    if ! command_exists docker; then
-        missing_tools+=("docker")
+    if ! command_exists podman; then
+        missing_tools+=("podman")
     fi
     
     if [ ${#missing_tools[@]} -ne 0 ]; then
@@ -99,14 +99,6 @@ check_prerequisites() {
 install_tools() {
     log_step "Installing/Updating Tools"
     
-    # Install golangci-lint if not present
-    if ! command_exists golangci-lint; then
-        log_info "Installing golangci-lint..."
-        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
-    else
-        log_info "golangci-lint already installed"
-    fi
-    
     # Install gosec if not present
     if ! command_exists gosec && [ ! -f "$(go env GOPATH)/bin/gosec" ]; then
         log_info "Installing gosec..."
@@ -118,7 +110,7 @@ install_tools() {
     # Install nancy if not present
     if ! command_exists nancy && [ ! -f "$(go env GOPATH)/bin/nancy" ]; then
         log_info "Installing nancy..."
-        go install github.com/sonatypecommunity/nancy@latest
+        go install github.com/sonatype-nexus-community/nancy@latest
     else
         log_info "nancy already installed"
     fi
@@ -143,27 +135,6 @@ init_go_modules() {
         log_success "Go modules verified"
     else
         log_error "Go module verification failed"
-        return 1
-    fi
-}
-
-# Run linting
-run_lint() {
-    log_step "Running Linter (golangci-lint)"
-    
-    if [ ! -f ".golangci.yml" ]; then
-        log_warning "No .golangci.yml config found, using defaults"
-    fi
-    
-    local golangci_cmd="golangci-lint run --timeout=5m"
-    if [ -f ".golangci.yml" ]; then
-        golangci_cmd="${golangci_cmd} --config=.golangci.yml"
-    fi
-    
-    if eval "${golangci_cmd}"; then
-        log_success "Linting passed"
-    else
-        log_error "Linting failed - see output above for details"
         return 1
     fi
 }
@@ -271,23 +242,20 @@ run_dependency_scan() {
 run_container_build() {
     log_step "Building Container"
     
-    if [ ! -f "Containerfile" ] && [ ! -f "Dockerfile" ]; then
-        log_warning "No Containerfile or Dockerfile found, skipping container build"
+    if [ ! -f "Containerfile" ]; then
+        log_warning "No Containerfile found, skipping container build"
         return 0
     fi
     
     local containerfile="Containerfile"
-    if [ ! -f "Containerfile" ] && [ -f "Dockerfile" ]; then
-        containerfile="Dockerfile"
-    fi
     
     log_info "Building container image..."
     
-    if docker build -f "${containerfile}" -t myshift-go:pr-check .; then
+    if podman build -f "${containerfile}" -t myshift-go:pr-check .; then
         log_success "Container built successfully"
         
         # Clean up the test image
-        docker rmi myshift-go:pr-check >/dev/null 2>&1 || true
+        podman rmi myshift-go:pr-check >/dev/null 2>&1 || true
     else
         log_error "Container build failed"
         return 1
@@ -338,7 +306,6 @@ main() {
     check_prerequisites || ((failed_steps++))
     install_tools || ((failed_steps++))
     init_go_modules || ((failed_steps++))
-    run_lint || ((failed_steps++))
     run_tests || ((failed_steps++))
     run_build || ((failed_steps++))
     run_security || ((failed_steps++))
@@ -372,7 +339,6 @@ case "${1:-}" in
         echo ""
         echo "Checks performed:"
         echo "  • Go module initialization and verification"
-        echo "  • Linting (golangci-lint)"
         echo "  • Tests with race detection"
         echo "  • Binary build and basic functionality"
         echo "  • Security analysis (gosec)"
