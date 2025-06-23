@@ -126,6 +126,27 @@ install_tools() {
     log_success "All tools ready"
 }
 
+# Initialize Go modules
+init_go_modules() {
+    log_step "Initializing Go Modules"
+    
+    log_info "Downloading Go modules..."
+    if go mod download; then
+        log_success "Go modules downloaded"
+    else
+        log_error "Failed to download Go modules"
+        return 1
+    fi
+    
+    log_info "Verifying Go modules..."
+    if go mod verify; then
+        log_success "Go modules verified"
+    else
+        log_error "Go module verification failed"
+        return 1
+    fi
+}
+
 # Run linting
 run_lint() {
     log_step "Running Linter (golangci-lint)"
@@ -235,9 +256,6 @@ run_dependency_scan() {
         nancy_cmd="nancy"
     fi
     
-    log_info "Downloading dependencies..."
-    go mod download
-    
     log_info "Scanning dependencies for known vulnerabilities..."
     
     if go list -json -deps ./... | "${nancy_cmd}" sleuth --loud; then
@@ -319,6 +337,7 @@ main() {
     # Run all checks
     check_prerequisites || ((failed_steps++))
     install_tools || ((failed_steps++))
+    init_go_modules || ((failed_steps++))
     run_lint || ((failed_steps++))
     run_tests || ((failed_steps++))
     run_build || ((failed_steps++))
@@ -352,6 +371,7 @@ case "${1:-}" in
         echo "to help you catch issues before creating a pull request."
         echo ""
         echo "Checks performed:"
+        echo "  • Go module initialization and verification"
         echo "  • Linting (golangci-lint)"
         echo "  • Tests with race detection"
         echo "  • Binary build and basic functionality"

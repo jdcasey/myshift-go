@@ -32,6 +32,11 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+
       - name: Run golangci-lint
         uses: golangci/golangci-lint-action@v3
         with:
@@ -50,6 +55,11 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -75,6 +85,11 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+
       - name: Build binary
         run: go build -v ./cmd/myshift
 
@@ -95,6 +110,11 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
 
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
@@ -128,7 +148,9 @@ jobs:
           cache: true
 
       - name: Download dependencies
-        run: go mod download
+        run: |
+          go mod download
+          go mod verify
 
       - name: Install nancy
         run: go install github.com/sonatypecommunity/nancy@latest
