@@ -40,10 +40,11 @@ RUN go mod download
 COPY . .
 
 # Verify module structure and build
-RUN echo "=== Verifying module structure ===" && \
+RUN tree -a /app && \
+    echo "=== Verifying module structure ===" && \
     go list -m && \
     go list ./... && \
-    echo "=== Building application ===" && \
+    echo "=== Building application ===" && \ 
     CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o myshift ./cmd/myshift
 
 # Runtime stage
