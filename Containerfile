@@ -38,6 +38,7 @@ RUN go mod download
 
 # Copy source code
 COPY . .
+COPY cmd cmd
 
 # Verify module structure and build
 RUN ls -lR /app && \
