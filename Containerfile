@@ -40,7 +40,7 @@ RUN go mod download
 COPY . .
 
 # Verify module structure and build
-RUN tree -a /app && \
+RUN ls -lR /app && \
     echo "=== Verifying module structure ===" && \
     go list -m && \
     go list ./... && \
