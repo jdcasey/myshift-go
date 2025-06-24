@@ -34,8 +34,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache: true
+
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
 
       - name: Run go fmt
         run: |
@@ -64,8 +69,13 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache: true
+
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -80,11 +90,16 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version-file: 'go.mod'
           cache: true
 
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+
       - name: Install gosec
-        run: go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
 
       - name: Run gosec
         run: gosec -fmt sarif -out results.sarif -stdout -verbose=text ./...
