@@ -24,17 +24,17 @@ import (
 	"time"
 
 	"github.com/jdcasey/myshift-go/internal/pagerduty"
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // ReplCommand handles the "repl" command functionality.
 type ReplCommand struct {
 	client pagerduty.PagerDutyClient
-	config *myshift.Config
+	config *types.Config
 }
 
 // NewReplCommand creates a new ReplCommand instance.
-func NewReplCommand(client pagerduty.PagerDutyClient, config *myshift.Config) *ReplCommand {
+func NewReplCommand(client pagerduty.PagerDutyClient, config *types.Config) *ReplCommand {
 	return &ReplCommand{
 		client: client,
 		config: config,

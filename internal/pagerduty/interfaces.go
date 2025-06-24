@@ -17,7 +17,7 @@ package pagerduty
 import (
 	"net/url"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // PagerDutyClient defines the interface for PagerDuty API operations.
@@ -30,21 +30,21 @@ import (
 type PagerDutyClient interface {
 	// FindUserByEmail searches for a user by their email address.
 	// Returns the first user matching the provided email address.
-	FindUserByEmail(email string) (*myshift.User, error)
+	FindUserByEmail(email string) (*types.User, error)
 
 	// GetUser retrieves a user by their PagerDuty user ID.
 	// Returns detailed user information including name, email, and type.
-	GetUser(userID string) (*myshift.User, error)
+	GetUser(userID string) (*types.User, error)
 
 	// GetOnCalls retrieves on-call shifts based on the provided parameters.
 	// Supports filtering by time range, users, schedules, and other criteria.
 	// Automatically handles pagination to return all matching results.
-	GetOnCalls(params url.Values) ([]myshift.OnCall, error)
+	GetOnCalls(params url.Values) ([]types.OnCall, error)
 
 	// CreateOverrides creates one or more schedule overrides for the specified schedule.
 	// Each override temporarily assigns a different user to handle on-call duties
 	// during the specified time period.
-	CreateOverrides(scheduleID string, overrides []myshift.Override) error
+	CreateOverrides(scheduleID string, overrides []types.Override) error
 }
 
 // Ensure Client implements PagerDutyClient interface

@@ -20,7 +20,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 func TestLoad_ValidConfig(t *testing.T) {
@@ -155,13 +155,13 @@ invalid_yaml: [unclosed bracket
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		testName string
-		config   *myshift.Config
+		config   *types.Config
 		wantErr  bool
 		errMsg   string
 	}{
 		{
 			testName: "valid config",
-			config: &myshift.Config{
+			config: &types.Config{
 				PagerDutyToken: "valid-token",
 				ScheduleID:     "SCHED123",
 				MyUser:         "user@example.com",
@@ -170,7 +170,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			testName: "missing token",
-			config: &myshift.Config{
+			config: &types.Config{
 				ScheduleID: "SCHED123",
 				MyUser:     "user@example.com",
 			},
@@ -179,7 +179,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			testName: "empty token",
-			config: &myshift.Config{
+			config: &types.Config{
 				PagerDutyToken: "",
 				ScheduleID:     "SCHED123",
 			},
@@ -188,7 +188,7 @@ func TestValidate(t *testing.T) {
 		},
 		{
 			testName: "minimal valid config",
-			config: &myshift.Config{
+			config: &types.Config{
 				PagerDutyToken: "valid-token",
 			},
 			wantErr: false,
@@ -216,7 +216,7 @@ func TestLoadFromFile(t *testing.T) {
 		testName    string
 		content     string
 		expectError bool
-		expected    *myshift.Config
+		expected    *types.Config
 	}{
 		{
 			testName: "valid config file",
@@ -226,7 +226,7 @@ schedule_id: "SCHED456"
 my_user: "user@example.com"
 `,
 			expectError: false,
-			expected: &myshift.Config{
+			expected: &types.Config{
 				PagerDutyToken: "token123",
 				ScheduleID:     "SCHED456",
 				MyUser:         "user@example.com",
@@ -241,7 +241,7 @@ pagerduty_token: "token123"  # inline comment
 schedule_id: "SCHED456"
 `,
 			expectError: false,
-			expected: &myshift.Config{
+			expected: &types.Config{
 				PagerDutyToken: "token123",
 				ScheduleID:     "SCHED456",
 			},

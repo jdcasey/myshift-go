@@ -34,14 +34,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 const (
 	// BaseURL is the base URL for the PagerDuty REST API v2.
 	BaseURL = "https://api.pagerduty.com"
 	// UserAgent is the user agent string sent with all API requests.
-	UserAgent = "myshift-go/" + myshift.Version
+	UserAgent = "myshift-go/" + types.Version
 )
 
 // Client represents a PagerDuty API client that implements the PagerDutyClient interface.
@@ -80,21 +80,21 @@ type APIResponse struct {
 // It contains an array of users matching the search criteria along with pagination metadata.
 type UsersResponse struct {
 	APIResponse
-	Users []myshift.User `json:"users"`
+	Users []types.User `json:"users"`
 }
 
 // OnCallsResponse represents the response from the PagerDuty oncalls API endpoint.
 // It contains an array of on-call shifts matching the query parameters.
 type OnCallsResponse struct {
 	APIResponse
-	OnCalls []myshift.OnCall `json:"oncalls"`
+	OnCalls []types.OnCall `json:"oncalls"`
 }
 
 // OverridesResponse represents the response from creating schedule overrides.
 // It contains the created override objects with their assigned IDs and metadata.
 type OverridesResponse struct {
 	APIResponse
-	Overrides []myshift.Override `json:"overrides"`
+	Overrides []types.Override `json:"overrides"`
 }
 
 // makeRequest makes an HTTP request to the PagerDuty API with proper authentication
@@ -156,7 +156,7 @@ func (c *Client) makeRequest(method, path string, params url.Values, body interf
 //   - email: The email address to search for
 //
 // Returns the matching User object or an error if the user is not found or the API call fails.
-func (c *Client) FindUserByEmail(email string) (*myshift.User, error) {
+func (c *Client) FindUserByEmail(email string) (*types.User, error) {
 	params := url.Values{
 		"query": []string{email},
 		"limit": []string{"1"},
@@ -190,7 +190,7 @@ func (c *Client) FindUserByEmail(email string) (*myshift.User, error) {
 //   - userID: The PagerDuty user ID to retrieve
 //
 // Returns the User object with full details or an error if the user doesn't exist or the API call fails.
-func (c *Client) GetUser(userID string) (*myshift.User, error) {
+func (c *Client) GetUser(userID string) (*types.User, error) {
 	resp, err := c.makeRequest("GET", "/users/"+userID, nil, nil)
 	if err != nil {
 		return nil, err
@@ -198,7 +198,7 @@ func (c *Client) GetUser(userID string) (*myshift.User, error) {
 	defer resp.Body.Close()
 
 	var result struct {
-		User myshift.User `json:"user"`
+		User types.User `json:"user"`
 	}
 
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
@@ -225,8 +225,8 @@ func (c *Client) GetUser(userID string) (*myshift.User, error) {
 //   - params: URL query parameters for filtering the on-call shifts
 //
 // Returns a slice of OnCall objects matching the criteria, or an error if the API call fails.
-func (c *Client) GetOnCalls(params url.Values) ([]myshift.OnCall, error) {
-	var allOnCalls []myshift.OnCall
+func (c *Client) GetOnCalls(params url.Values) ([]types.OnCall, error) {
+	var allOnCalls []types.OnCall
 	offset := 0
 	limit := 100
 
@@ -279,9 +279,9 @@ func (c *Client) GetOnCalls(params url.Values) ([]myshift.OnCall, error) {
 //   - overrides: Slice of Override objects to create
 //
 // Returns nil on success, or an error if validation fails or the API call fails.
-func (c *Client) CreateOverrides(scheduleID string, overrides []myshift.Override) error {
+func (c *Client) CreateOverrides(scheduleID string, overrides []types.Override) error {
 	requestBody := struct {
-		Overrides []myshift.Override `json:"overrides"`
+		Overrides []types.Override `json:"overrides"`
 	}{
 		Overrides: overrides,
 	}

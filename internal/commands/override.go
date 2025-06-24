@@ -21,7 +21,7 @@ import (
 	"time"
 
 	"github.com/jdcasey/myshift-go/internal/pagerduty"
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // OverrideCommand handles the "override" command functionality.
@@ -74,12 +74,12 @@ func (o *OverrideCommand) Execute(scheduleID, userEmail, targetEmail string, sta
 	}
 
 	// Create overrides for each shift
-	var overrides []myshift.Override
+	var overrides []types.Override
 	for _, shift := range onCalls {
-		override := myshift.Override{
+		override := types.Override{
 			Start: shift.Start,
 			End:   shift.End,
-			User: myshift.UserReference{
+			User: types.UserReference{
 				ID:   user.ID,
 				Type: "user_reference",
 			},

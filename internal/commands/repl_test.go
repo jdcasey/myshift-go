@@ -22,7 +22,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // Since the REPL reads from stdin, we need to simulate user input
@@ -68,7 +68,7 @@ func TestReplCommand_Execute_BasicCommands(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			fixture := NewTestFixture()
-			config := &myshift.Config{
+			config := &types.Config{
 				PagerDutyToken: "test-token",
 				ScheduleID:     "SCHED123",
 				MyUser:         "test@example.com",
@@ -135,7 +135,7 @@ func TestReplCommand_Execute_BasicCommands(t *testing.T) {
 
 func TestReplCommand_Execute_NextCommand(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -204,7 +204,7 @@ func TestReplCommand_Execute_NextCommand(t *testing.T) {
 
 func TestReplCommand_Execute_PlanCommand(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -273,7 +273,7 @@ func TestReplCommand_Execute_PlanCommand(t *testing.T) {
 
 func TestReplCommand_Execute_UpcomingCommand(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -342,7 +342,7 @@ func TestReplCommand_Execute_UpcomingCommand(t *testing.T) {
 
 func TestReplCommand_Execute_OverrideCommand(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -447,7 +447,7 @@ func TestReplCommand_Execute_CommandValidation(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			fixture := NewTestFixture()
-			config := &myshift.Config{
+			config := &types.Config{
 				PagerDutyToken: "test-token",
 				ScheduleID:     "SCHED123",
 				// Note: no MyUser set to test validation
@@ -512,7 +512,7 @@ func TestReplCommand_Execute_CommandValidation(t *testing.T) {
 
 func TestReplCommand_Execute_WelcomeMessage(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -576,7 +576,7 @@ func TestReplCommand_Execute_WelcomeMessage(t *testing.T) {
 // Test simulating EOF (Ctrl+D)
 func TestReplCommand_Execute_EOF(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "test@example.com",
@@ -637,7 +637,7 @@ func TestReplCommand_Execute_EOF(t *testing.T) {
 
 func TestReplCommand_Execute_MyUserFallback(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "myuser@example.com",
@@ -706,7 +706,7 @@ func TestReplCommand_Execute_MyUserFallback(t *testing.T) {
 
 func TestReplCommand_Execute_HelpWithMyUser(t *testing.T) {
 	fixture := NewTestFixture()
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "myuser@example.com",
@@ -772,7 +772,7 @@ func BenchmarkReplCommand_Execute(b *testing.B) {
 	fixture := NewTestFixture()
 	fixture.MockClient.AddUser("USER001", "John Doe", "john@example.com")
 
-	config := &myshift.Config{
+	config := &types.Config{
 		PagerDutyToken: "test-token",
 		ScheduleID:     "SCHED123",
 		MyUser:         "john@example.com",

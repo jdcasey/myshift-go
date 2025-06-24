@@ -26,7 +26,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 	"gopkg.in/yaml.v3"
 )
 
@@ -81,7 +81,7 @@ var configPathsFunc = getConfigPaths
 //
 // Returns a validated Config object or an error if no config file is found
 // or if the configuration is invalid.
-func Load() (*myshift.Config, error) {
+func Load() (*types.Config, error) {
 	for _, path := range configPathsFunc() {
 		if _, err := os.Stat(path); err == nil {
 			return loadFromFile(path)
@@ -101,7 +101,7 @@ func Load() (*myshift.Config, error) {
 //
 // Returns a validated Config object or an error if the file cannot be read,
 // parsed, or if validation fails.
-func loadFromFile(path string) (*myshift.Config, error) {
+func loadFromFile(path string) (*types.Config, error) {
 	// Validate and clean the file path to prevent directory traversal attacks
 	cleanPath := filepath.Clean(path)
 	if cleanPath != path {
@@ -118,7 +118,7 @@ func loadFromFile(path string) (*myshift.Config, error) {
 		return nil, fmt.Errorf("error reading config file %s: %w", cleanPath, err)
 	}
 
-	var config myshift.Config
+	var config types.Config
 	if err := yaml.Unmarshal(data, &config); err != nil {
 		return nil, fmt.Errorf("error parsing config file %s: %w", cleanPath, err)
 	}
@@ -141,7 +141,7 @@ func loadFromFile(path string) (*myshift.Config, error) {
 //   - config: The Config object to validate
 //
 // Returns nil if validation passes, or an error describing the validation failure.
-func validate(config *myshift.Config) error {
+func validate(config *types.Config) error {
 	if config.PagerDutyToken == "" {
 		return fmt.Errorf("'pagerduty_token' is required in configuration")
 	}
@@ -222,7 +222,7 @@ func ValidateConfig() (*ValidationResult, error) {
 	}
 
 	// Try to find and load config from standard locations
-	var config *myshift.Config
+	var config *types.Config
 	var loadErr error
 
 	for _, path := range result.ConfigLocations {

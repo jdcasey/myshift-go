@@ -20,7 +20,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 func TestTextFormatter_Format(t *testing.T) {
@@ -30,15 +30,15 @@ func TestTextFormatter_Format(t *testing.T) {
 	start := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 3, 22, 0, 0, 0, 0, time.UTC)
 
-	shifts := []myshift.OnCall{
+	shifts := []types.OnCall{
 		{
 			Start: time.Date(2024, 3, 15, 9, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 3, 15, 17, 0, 0, 0, time.UTC),
-			User: myshift.User{
+			User: types.User{
 				ID:   "USER001",
 				Name: "John Doe",
 			},
-			Schedule: myshift.Schedule{
+			Schedule: types.Schedule{
 				ID:   "SCHED001",
 				Name: "Primary Schedule",
 			},
@@ -46,11 +46,11 @@ func TestTextFormatter_Format(t *testing.T) {
 		{
 			Start: time.Date(2024, 3, 16, 9, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 3, 16, 17, 0, 0, 0, time.UTC),
-			User: myshift.User{
+			User: types.User{
 				ID:   "USER002",
 				Name: "Jane Smith",
 			},
-			Schedule: myshift.Schedule{
+			Schedule: types.Schedule{
 				ID:   "SCHED001",
 				Name: "Primary Schedule",
 			},
@@ -95,7 +95,7 @@ func TestTextFormatter_Format_NoShifts(t *testing.T) {
 	end := time.Date(2024, 3, 22, 0, 0, 0, 0, time.UTC)
 
 	var buf bytes.Buffer
-	err := formatter.Format(&buf, []myshift.OnCall{}, map[string]string{}, start, end)
+	err := formatter.Format(&buf, []types.OnCall{}, map[string]string{}, start, end)
 
 	if err != nil {
 		t.Fatalf("TextFormatter.Format() failed: %v", err)
@@ -115,15 +115,15 @@ func TestICalFormatter_Format(t *testing.T) {
 	start := time.Date(2024, 3, 15, 0, 0, 0, 0, time.UTC)
 	end := time.Date(2024, 3, 22, 0, 0, 0, 0, time.UTC)
 
-	shifts := []myshift.OnCall{
+	shifts := []types.OnCall{
 		{
 			Start: time.Date(2024, 3, 15, 9, 0, 0, 0, time.UTC),
 			End:   time.Date(2024, 3, 15, 17, 0, 0, 0, time.UTC),
-			User: myshift.User{
+			User: types.User{
 				ID:   "USER001",
 				Name: "John Doe",
 			},
-			Schedule: myshift.Schedule{
+			Schedule: types.Schedule{
 				ID:   "SCHED001",
 				Name: "Primary Schedule",
 			},
@@ -181,7 +181,7 @@ func TestICalFormatter_Format_EmptyShifts(t *testing.T) {
 	end := time.Date(2024, 3, 22, 0, 0, 0, 0, time.UTC)
 
 	var buf bytes.Buffer
-	err := formatter.Format(&buf, []myshift.OnCall{}, map[string]string{}, start, end)
+	err := formatter.Format(&buf, []types.OnCall{}, map[string]string{}, start, end)
 
 	if err != nil {
 		t.Fatalf("ICalFormatter.Format() failed: %v", err)
@@ -272,7 +272,7 @@ func TestGetFormatter(t *testing.T) {
 
 			// Check that we can use the formatter (basic interface test)
 			var buf bytes.Buffer
-			testErr := formatter.Format(&buf, []myshift.OnCall{}, map[string]string{}, time.Now(), time.Now())
+			testErr := formatter.Format(&buf, []types.OnCall{}, map[string]string{}, time.Now(), time.Now())
 			if testErr != nil {
 				t.Errorf("Formatter returned by GetFormatter(%q) failed to format: %v", tt.format, testErr)
 			}

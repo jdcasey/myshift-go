@@ -21,12 +21,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // PlanFormatter defines the interface for formatting plan output.
 type PlanFormatter interface {
-	Format(writer io.Writer, shifts []myshift.OnCall, userMap map[string]string, start, end time.Time) error
+	Format(writer io.Writer, shifts []types.OnCall, userMap map[string]string, start, end time.Time) error
 }
 
 // TextFormatter formats plan output as human-readable text.
@@ -38,7 +38,7 @@ func NewTextFormatter() *TextFormatter {
 }
 
 // Format outputs the shifts in a human-readable text format.
-func (f *TextFormatter) Format(writer io.Writer, shifts []myshift.OnCall, userMap map[string]string, start, end time.Time) error {
+func (f *TextFormatter) Format(writer io.Writer, shifts []types.OnCall, userMap map[string]string, start, end time.Time) error {
 	if len(shifts) == 0 {
 		_, err := fmt.Fprintf(writer, "No shifts found from %s to %s\n",
 			start.Format("2006-01-02"), end.Format("2006-01-02"))
@@ -75,7 +75,7 @@ func NewICalFormatter() *ICalFormatter {
 }
 
 // Format outputs the shifts in iCalendar format.
-func (f *ICalFormatter) Format(writer io.Writer, shifts []myshift.OnCall, userMap map[string]string, start, end time.Time) error {
+func (f *ICalFormatter) Format(writer io.Writer, shifts []types.OnCall, userMap map[string]string, start, end time.Time) error {
 	// Write iCal header
 	_, err := fmt.Fprintf(writer, "BEGIN:VCALENDAR\r\n")
 	if err != nil {

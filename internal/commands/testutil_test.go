@@ -20,14 +20,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdcasey/myshift-go/pkg/myshift"
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 // MockPagerDutyClient is a mock implementation of PagerDutyClient for testing.
 type MockPagerDutyClient struct {
-	Users     map[string]*myshift.User
-	OnCalls   []myshift.OnCall
-	Overrides []myshift.Override
+	Users     map[string]*types.User
+	OnCalls   []types.OnCall
+	Overrides []types.Override
 
 	// Track method calls for verification
 	FindUserByEmailCalls []string
@@ -38,26 +38,26 @@ type MockPagerDutyClient struct {
 
 type CreateOverridesCall struct {
 	ScheduleID string
-	Overrides  []myshift.Override
+	Overrides  []types.Override
 }
 
 // NewMockPagerDutyClient creates a new mock client with default test data.
 func NewMockPagerDutyClient() *MockPagerDutyClient {
 	return &MockPagerDutyClient{
-		Users:   make(map[string]*myshift.User),
-		OnCalls: []myshift.OnCall{},
+		Users:   make(map[string]*types.User),
+		OnCalls: []types.OnCall{},
 	}
 }
 
 // AddUser adds a user to the mock client's data.
 func (m *MockPagerDutyClient) AddUser(id, name, email string) {
-	m.Users[email] = &myshift.User{
+	m.Users[email] = &types.User{
 		ID:    id,
 		Name:  name,
 		Email: email,
 		Type:  "user",
 	}
-	m.Users[id] = &myshift.User{
+	m.Users[id] = &types.User{
 		ID:    id,
 		Name:  name,
 		Email: email,
@@ -67,16 +67,16 @@ func (m *MockPagerDutyClient) AddUser(id, name, email string) {
 
 // AddOnCall adds an on-call shift to the mock client's data.
 func (m *MockPagerDutyClient) AddOnCall(userID, userName, userEmail string, start, end time.Time) {
-	onCall := myshift.OnCall{
+	onCall := types.OnCall{
 		Start: start,
 		End:   end,
-		User: myshift.User{
+		User: types.User{
 			ID:    userID,
 			Name:  userName,
 			Email: userEmail,
 			Type:  "user",
 		},
-		Schedule: myshift.Schedule{
+		Schedule: types.Schedule{
 			ID:       "SCHED123",
 			Name:     "Test Schedule",
 			TimeZone: "UTC",
@@ -86,7 +86,7 @@ func (m *MockPagerDutyClient) AddOnCall(userID, userName, userEmail string, star
 }
 
 // FindUserByEmail implements PagerDutyClient interface.
-func (m *MockPagerDutyClient) FindUserByEmail(email string) (*myshift.User, error) {
+func (m *MockPagerDutyClient) FindUserByEmail(email string) (*types.User, error) {
 	m.FindUserByEmailCalls = append(m.FindUserByEmailCalls, email)
 
 	user, exists := m.Users[email]
@@ -97,7 +97,7 @@ func (m *MockPagerDutyClient) FindUserByEmail(email string) (*myshift.User, erro
 }
 
 // GetUser implements PagerDutyClient interface.
-func (m *MockPagerDutyClient) GetUser(userID string) (*myshift.User, error) {
+func (m *MockPagerDutyClient) GetUser(userID string) (*types.User, error) {
 	m.GetUserCalls = append(m.GetUserCalls, userID)
 
 	user, exists := m.Users[userID]
@@ -108,7 +108,7 @@ func (m *MockPagerDutyClient) GetUser(userID string) (*myshift.User, error) {
 }
 
 // GetOnCalls implements PagerDutyClient interface.
-func (m *MockPagerDutyClient) GetOnCalls(params url.Values) ([]myshift.OnCall, error) {
+func (m *MockPagerDutyClient) GetOnCalls(params url.Values) ([]types.OnCall, error) {
 	m.GetOnCallsCalls = append(m.GetOnCallsCalls, params)
 
 	// Filter by user_ids if specified
@@ -117,7 +117,7 @@ func (m *MockPagerDutyClient) GetOnCalls(params url.Values) ([]myshift.OnCall, e
 		return m.OnCalls, nil
 	}
 
-	var filtered []myshift.OnCall
+	var filtered []types.OnCall
 	for _, onCall := range m.OnCalls {
 		for _, userID := range userIDs {
 			if onCall.User.ID == userID {
@@ -131,10 +131,10 @@ func (m *MockPagerDutyClient) GetOnCalls(params url.Values) ([]myshift.OnCall, e
 }
 
 // CreateOverrides implements PagerDutyClient interface.
-func (m *MockPagerDutyClient) CreateOverrides(scheduleID string, overrides []myshift.Override) error {
+func (m *MockPagerDutyClient) CreateOverrides(scheduleID string, overrides []types.Override) error {
 	call := CreateOverridesCall{
 		ScheduleID: scheduleID,
-		Overrides:  make([]myshift.Override, len(overrides)),
+		Overrides:  make([]types.Override, len(overrides)),
 	}
 	copy(call.Overrides, overrides)
 	m.CreateOverridesCalls = append(m.CreateOverridesCalls, call)
