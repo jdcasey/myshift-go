@@ -28,7 +28,7 @@ readonly NC='\033[0m' # No Color
 
 # Configuration
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly PROJECT_ROOT="${SCRIPT_DIR}"
+readonly PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 readonly TEMP_DIR=$(mktemp -d)
 readonly LOG_FILE="${TEMP_DIR}/pr-preflight.log"
 
