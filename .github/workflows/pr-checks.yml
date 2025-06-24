@@ -18,6 +18,10 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  GO111MODULE: on
+  GOPROXY: direct
+
 jobs:
   test:
     name: Test
@@ -32,10 +36,24 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Debug module info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Go version: $(go version)"
+          echo "Go module: $(go list -m)"
+          echo "Go env GOMOD: $(go env GOMOD)"
+
       - name: Download dependencies
         run: |
           go mod download
           go mod verify
+
+      - name: Verify module build
+        run: |
+          echo "Testing module compilation..."
+          go list ./...
+          echo "Building all packages..."
+          go build ./...
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...

@@ -22,6 +22,8 @@ on:
 env:
   REGISTRY: quay.io
   IMAGE_NAME: jdcasey/myshift-go
+  GO111MODULE: on
+  GOPROXY: direct
 
 jobs:
   lint:
@@ -36,6 +38,14 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+
+      - name: Debug module info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Go version: $(go version)"
+          echo "Go module: $(go list -m)"
+          echo "Go env GOMOD: $(go env GOMOD)"
+          ls -la
 
       - name: Download dependencies
         run: |
@@ -72,10 +82,25 @@ jobs:
           go-version-file: 'go.mod'
           cache: true
 
+      - name: Debug module info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Go version: $(go version)"
+          echo "Go module: $(go list -m)"
+          echo "Go env GOMOD: $(go env GOMOD)"
+          ls -la pkg/
+
       - name: Download dependencies
         run: |
           go mod download
           go mod verify
+
+      - name: Verify module build
+        run: |
+          echo "Testing module compilation..."
+          go list ./...
+          echo "Building all packages..."
+          go build ./...
 
       - name: Run tests
         run: go test -v -race -coverprofile=coverage.out ./...
@@ -92,6 +117,13 @@ jobs:
         with:
           go-version-file: 'go.mod'
           cache: true
+
+      - name: Debug module info
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Go version: $(go version)"
+          echo "Go module: $(go list -m)"
+          echo "Go env GOMOD: $(go env GOMOD)"
 
       - name: Download dependencies
         run: |

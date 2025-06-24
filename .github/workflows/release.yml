@@ -20,6 +20,10 @@ on:
       - 'v[0-9]+.[0-9]+.[0-9]+'
       - 'v[0-9]+.[0-9]+.[0-9]+-*'  # Also support pre-release tags like v1.0.0-beta
 
+env:
+  GO111MODULE: on
+  GOPROXY: direct
+
 permissions:
   contents: write  # Required for creating releases and uploading assets
 

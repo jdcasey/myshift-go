@@ -25,6 +25,10 @@ RUN microdnf -y update && \
 # Create and set working directory
 WORKDIR /app
 
+# Set Go module environment variables
+ENV GO111MODULE=on
+ENV GOPROXY=direct
+
 # Copy go mod files
 COPY go.mod go.sum ./
 
