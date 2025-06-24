@@ -110,7 +110,7 @@ type OverridesResponse struct {
 // Returns the HTTP response or an error if the request fails or returns a non-2xx status.
 func (c *Client) makeRequest(method, path string, params url.Values, body interface{}) (*http.Response, error) {
 	reqURL := c.baseURL + path
-	if params != nil && len(params) > 0 {
+	if len(params) > 0 {
 		reqURL += "?" + params.Encode()
 	}
 
