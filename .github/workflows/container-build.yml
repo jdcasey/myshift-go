@@ -23,7 +23,8 @@ env:
   REGISTRY: quay.io
   IMAGE_NAME: jdcasey/myshift-go
   GO111MODULE: on
-  GOPROXY: direct
+  GOPROXY: off
+  GOSUMDB: off
 
 jobs:
   lint:
@@ -32,6 +33,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify checkout
+        run: |
+          pwd
+          ls -la .
+          echo "--- Checking git status ---"
+          git status
+          echo "--- Checking go.mod exists ---"
+          test -f go.mod && echo "go.mod found" || echo "go.mod NOT found"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -43,14 +55,37 @@ jobs:
         run: |
           echo "Current directory: $(pwd)"
           echo "Go version: $(go version)"
-          echo "Go module: $(go list -m)"
           echo "Go env GOMOD: $(go env GOMOD)"
+          echo "Go env GOPATH: $(go env GOPATH)"
+          echo "Go env GOPROXY: $(go env GOPROXY)"
+          echo "Go env GO111MODULE: $(go env GO111MODULE)"
           ls -la
+          echo "--- go.mod content ---"
+          cat go.mod
+          echo "--- Checking if we're in a module ---"
+          go list -m || echo "Not in a Go module context"
+          echo "--- Listing all packages ---"
+          go list ./... || echo "Failed to list packages"
+
+      - name: Initialize module properly
+        run: |
+          echo "Ensuring we're in the correct module context..."
+          go mod tidy
+          go list -m
+          echo "--- Verifying local packages are accessible ---"
+          go list ./pkg/myshift
+          go list ./internal/...
 
       - name: Download dependencies
         run: |
           go mod download
           go mod verify
+
+      - name: Pre-build verification
+        run: |
+          echo "Testing if all imports resolve correctly..."
+          go build -n ./internal/pagerduty
+          echo "Success: All imports resolve"
 
       - name: Run go fmt
         run: |
@@ -75,6 +110,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify checkout
+        run: |
+          pwd
+          ls -la .
+          echo "--- Checking go.mod exists ---"
+          test -f go.mod && echo "go.mod found" || echo "go.mod NOT found"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -86,9 +130,24 @@ jobs:
         run: |
           echo "Current directory: $(pwd)"
           echo "Go version: $(go version)"
-          echo "Go module: $(go list -m)"
           echo "Go env GOMOD: $(go env GOMOD)"
+          echo "Go env GOPATH: $(go env GOPATH)"
+          echo "Go env GOPROXY: $(go env GOPROXY)"
+          echo "Go env GO111MODULE: $(go env GO111MODULE)"
           ls -la pkg/
+          echo "--- go.mod content ---"
+          cat go.mod
+          echo "--- Checking if we're in a module ---"
+          go list -m || echo "Not in a Go module context"
+
+      - name: Initialize module properly
+        run: |
+          echo "Ensuring we're in the correct module context..."
+          go mod tidy
+          go list -m
+          echo "--- Verifying local packages are accessible ---"
+          go list ./pkg/myshift
+          go list ./internal/...
 
       - name: Download dependencies
         run: |
@@ -111,6 +170,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify checkout
+        run: |
+          pwd
+          ls -la .
+          echo "--- Checking go.mod exists ---"
+          test -f go.mod && echo "go.mod found" || echo "go.mod NOT found"
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -122,13 +190,34 @@ jobs:
         run: |
           echo "Current directory: $(pwd)"
           echo "Go version: $(go version)"
-          echo "Go module: $(go list -m)"
           echo "Go env GOMOD: $(go env GOMOD)"
+          echo "Go env GOPATH: $(go env GOPATH)"
+          echo "Go env GOPROXY: $(go env GOPROXY)"
+          echo "Go env GO111MODULE: $(go env GO111MODULE)"
+          echo "--- go.mod content ---"
+          cat go.mod
+          echo "--- Checking if we're in a module ---"
+          go list -m || echo "Not in a Go module context"
+
+      - name: Initialize module properly
+        run: |
+          echo "Ensuring we're in the correct module context..."
+          go mod tidy
+          go list -m
+          echo "--- Verifying local packages are accessible ---"
+          go list ./pkg/myshift
+          go list ./internal/...
 
       - name: Download dependencies
         run: |
           go mod download
           go mod verify
+
+      - name: Pre-build verification
+        run: |
+          echo "Testing if all imports resolve correctly..."
+          go build -n ./internal/pagerduty
+          echo "Success: All imports resolve"
 
       - name: Install gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
