@@ -28,6 +28,7 @@ WORKDIR /app
 # Set Go module environment variables
 ENV GO111MODULE=on
 ENV GOPROXY=direct
+ENV GOSUMDB=off
 
 # Copy go mod files
 COPY go.mod go.sum ./
@@ -38,8 +39,12 @@ RUN go mod download
 # Copy source code
 COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o myshift ./cmd/myshift
+# Verify module structure and build
+RUN echo "=== Verifying module structure ===" && \
+    go list -m && \
+    go list ./... && \
+    echo "=== Building application ===" && \
+    CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags '-extldflags "-static"' -o myshift ./cmd/myshift
 
 # Runtime stage
 FROM registry.fedoraproject.org/fedora-minimal:41
@@ -60,12 +65,14 @@ COPY --from=builder /app/myshift .
 
 # Change ownership to non-root user
 RUN chown myshift:myshift /app/myshift
+RUN mkdir -p /home/myshift/.config
 
 # Switch to non-root user
 USER myshift
 
 # Set the entrypoint
 ENTRYPOINT ["./myshift"]
+#ENTRYPOINT ["/bin/bash"]
 
 # Default command (can be overridden)
 CMD ["repl"] 
