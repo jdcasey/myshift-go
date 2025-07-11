@@ -22,6 +22,9 @@ env:
   GO111MODULE: on
   GOPROXY: direct
 
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Test
@@ -108,39 +111,9 @@ jobs:
 
   security:
     name: Security Analysis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: 'go.mod'
-          cache: true
-
-      - name: Download dependencies
-        run: |
-          go mod download
-          go mod verify
-
-      - name: Install gosec
-        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
-
-      - name: Run gosec
-        run: gosec -fmt sarif -out results.sarif -stdout -verbose=text ./...
-
-      - name: Run gosec with human-readable output
-        run: |
-          echo "Running gosec security scan..."
-          gosec -fmt text ./...
-        if: failure()
-
-      - name: Upload SARIF file
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: results.sarif
-        if: always()
+    uses: ./.github/workflows/security-scan-reusable.yml
+    with:
+      upload_sarif: false
 
   dependency-scan:
     name: Dependency Vulnerability Scan
