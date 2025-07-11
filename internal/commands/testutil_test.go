@@ -196,9 +196,7 @@ func (m *MockPagerDutyClient) CreateOverrides(scheduleID string, overrides []typ
 		return fmt.Errorf("mock error creating overrides")
 	}
 
-	for _, override := range overrides {
-		m.CreateOverridesCalls = append(m.CreateOverridesCalls, override)
-	}
+	m.CreateOverridesCalls = append(m.CreateOverridesCalls, overrides...)
 
 	return nil
 }
