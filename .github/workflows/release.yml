@@ -145,10 +145,21 @@ jobs:
             myshift-${{ steps.version.outputs.VERSION }}-${{ matrix.goos }}-${{ matrix.goarch }}.*
           retention-days: 5
 
+  container:
+    name: Build and Push Container
+    needs: test
+    uses: ./.github/workflows/container-build-reusable.yml
+    with:
+      image_tags: "latest ${{ github.ref_name }} ${{ github.sha }}"
+      push_image: true
+    secrets:
+      registry_username: ${{ secrets.QUAY_BOT_USER }}
+      registry_password: ${{ secrets.QUAY_BOT_PASSWORD }}
+
   release:
     name: Create Release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [build, container]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

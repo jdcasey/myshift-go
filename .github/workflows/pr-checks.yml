@@ -175,16 +175,7 @@ jobs:
 
   container:
     name: Container Build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build container image
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: myshift-go
-          containerfiles: |
-            ./Containerfile
-          tags: pr-check 
+    uses: ./.github/workflows/container-build-reusable.yml
+    with:
+      image_tags: "pr-check"
+      push_image: false 

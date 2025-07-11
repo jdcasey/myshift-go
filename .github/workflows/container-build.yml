@@ -115,33 +115,10 @@ jobs:
 
   build-and-push:
     needs: [lint, test, security]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Build container image
-        id: build-image
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: myshift-go
-          containerfiles: |
-            ./Containerfile
-          tags: latest ${{ github.sha }}
-
-      - name: Push To quay.io
-        id: push-to-quay
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-image.outputs.image }}
-          tags: ${{ steps.build-image.outputs.tags }}
-          registry: quay.io/jdcasey
-          username: ${{ secrets.QUAY_BOT_USER }}
-          password: ${{ secrets.QUAY_BOT_PASSWORD }}
-
-      - name: Print image URL
-        run: echo "Image pushed to ${{ steps.push-to-quay.outputs.registry-paths }}" 
+    uses: ./.github/workflows/container-build-reusable.yml
+    with:
+      image_tags: "latest ${{ github.sha }}"
+      push_image: true
+    secrets:
+      registry_username: ${{ secrets.QUAY_BOT_USER }}
+      registry_password: ${{ secrets.QUAY_BOT_PASSWORD }} 
