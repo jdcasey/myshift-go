@@ -1,0 +1,82 @@
+# Copyright 2025 John Casey
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Security Scan (Reusable)
+
+on:
+  workflow_call:
+    inputs:
+      upload_sarif:
+        description: 'Whether to upload SARIF results to GitHub Security tab'
+        required: false
+        type: boolean
+        default: true
+      go_version_file:
+        description: 'Path to go.mod file for Go version'
+        required: false
+        type: string
+        default: 'go.mod'
+      fail_on_issues:
+        description: 'Whether to fail the workflow if security issues are found'
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  security:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ inputs.go_version_file }}
+          cache: true
+
+      - name: Download dependencies
+        run: |
+          go mod download
+          go mod verify
+
+      - name: Install gosec
+        run: go install github.com/securego/gosec/v2/cmd/gosec@latest
+
+      - name: Run gosec (with SARIF output)
+        if: ${{ inputs.upload_sarif }}
+        run: gosec -fmt sarif -out results.sarif -stdout -verbose=text ./...
+        continue-on-error: ${{ !inputs.fail_on_issues }}
+
+      - name: Run gosec (text output only)
+        if: ${{ !inputs.upload_sarif }}
+        run: gosec -fmt text ./...
+        continue-on-error: ${{ !inputs.fail_on_issues }}
+
+      - name: Upload SARIF file
+        if: ${{ inputs.upload_sarif && always() }}
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: results.sarif
+
+      - name: Security scan summary
+        if: always()
+        run: |
+          echo "Security scan completed"
+          echo "Upload SARIF: ${{ inputs.upload_sarif }}"
+          echo "Fail on issues: ${{ inputs.fail_on_issues }}" 
