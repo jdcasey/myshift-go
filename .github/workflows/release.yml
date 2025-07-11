@@ -26,6 +26,7 @@ env:
 
 permissions:
   contents: write  # Required for creating releases and uploading assets
+  packages: write  # Required for pushing container images
 
 jobs:
   test:

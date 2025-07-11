@@ -26,6 +26,10 @@ env:
   GOPROXY: direct
   GOSUMDB: off
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   lint:
     name: Lint
