@@ -1,6 +1,7 @@
 # MyShift
 
-[![Build Status](https://github.com/jdcasey/myshift-go/workflows/CI/badge.svg)](https://github.com/jdcasey/myshift-go/actions)
+[![Container Build](https://github.com/jdcasey/myshift-go/actions/workflows/container-build.yml/badge.svg)](https://github.com/jdcasey/myshift-go/actions/workflows/container-build.yml)
+[![Documentation Build](https://github.com/jdcasey/myshift-go/actions/workflows/docs.yml/badge.svg)](https://github.com/jdcasey/myshift-go/actions/workflows/docs.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![GitHub Release](https://img.shields.io/github/release/jdcasey/myshift-go.svg)](https://github.com/jdcasey/myshift-go/releases)
 
