@@ -17,58 +17,89 @@ package commands
 
 import (
 	"fmt"
-	"io"
-	"net/url"
-	"os"
-	"time"
-
-	"github.com/jdcasey/myshift-go/internal/pagerduty"
 )
 
 // PlanCommand handles the "plan" command functionality.
 type PlanCommand struct {
-	client pagerduty.PagerDutyClient
+	*BaseCommand
 }
 
 // NewPlanCommand creates a new PlanCommand instance.
-func NewPlanCommand(client pagerduty.PagerDutyClient) *PlanCommand {
-	return &PlanCommand{client: client}
+func NewPlanCommand(ctx *CommandContext) *PlanCommand {
+	return &PlanCommand{
+		BaseCommand: NewBaseCommand(ctx.Client, ctx.Config, ctx.Writer),
+	}
 }
 
 // Execute runs the plan command to show all shifts in a schedule.
-func (p *PlanCommand) Execute(scheduleID string, start, end time.Time, formatter PlanFormatter, writer io.Writer) error {
-	// Get all on-call shifts for the schedule
-	params := url.Values{
-		"since":          []string{start.Format(time.RFC3339)},
-		"until":          []string{end.Format(time.RFC3339)},
-		"schedule_ids[]": []string{scheduleID},
-		"overflow":       []string{"true"},
+func (p *PlanCommand) Execute(args []string) error {
+	parser := NewFlagParser("plan").
+		AddDaysFlag(28, "Number of days to show").
+		AddStartFlag("", "Start date (YYYY-MM-DD)").
+		AddEndFlag("", "End date (YYYY-MM-DD)").
+		AddFormatFlag("text", "Output format (text, ical)").
+		SetUsage(func() {
+			fmt.Print(`Usage: myshift plan [options]
+
+Options:
+  --days int         Number of days to show (default: 28)
+  --start string     Start date (YYYY-MM-DD) 
+  --end string       End date (YYYY-MM-DD)
+  --format, -o string  Output format: text, ical (default: text)
+
+`)
+		})
+
+	flags, err := parser.Parse(args)
+	if err != nil {
+		return err
 	}
 
-	onCalls, err := p.client.GetOnCalls(params)
+	// If flags is nil, help was displayed - exit gracefully
+	if flags == nil {
+		return nil
+	}
+
+	// Get schedule ID
+	scheduleID, err := p.GetScheduleID()
 	if err != nil {
-		return fmt.Errorf("error fetching shifts: %w", err)
+		return err
+	}
+
+	// Calculate time range
+	start, end, err := CalculateTimeRange(flags.Start, flags.End, flags.Days)
+	if err != nil {
+		return err
+	}
+
+	// Get all on-call shifts for the schedule
+	onCalls, err := p.GetOnCallsForSchedule(scheduleID, start, end)
+	if err != nil {
+		return err
 	}
 
 	// Build user map for display
-	userMap := make(map[string]string)
-	for _, shift := range onCalls {
-		if _, exists := userMap[shift.User.ID]; !exists {
-			user, err := p.client.GetUser(shift.User.ID)
-			if err != nil {
-				// If we can't get user details, use what we have
-				userMap[shift.User.ID] = shift.User.Name
-			} else {
-				userMap[shift.User.ID] = user.Name
-			}
-		}
-	}
+	userMap := p.BuildUserMap(onCalls)
 
-	// If no writer is provided, default to stdout
-	if writer == nil {
-		writer = os.Stdout
+	// Get the appropriate formatter
+	formatter, err := GetFormatter(flags.Format)
+	if err != nil {
+		return err
 	}
 
 	// Use the formatter to output the data
-	return formatter.Format(writer, onCalls, userMap, start, end)
+	return formatter.Format(p.writer, onCalls, userMap, start, end)
+}
+
+// Usage returns the usage information for the plan command
+func (p *PlanCommand) Usage() string {
+	return `Usage: myshift plan [options]
+
+Options:
+  --days int         Number of days to show (default: 28)
+  --start string     Start date (YYYY-MM-DD) 
+  --end string       End date (YYYY-MM-DD)
+  --format, -o string  Output format: text, ical (default: text)
+
+`
 }

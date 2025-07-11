@@ -17,54 +17,70 @@ package commands
 
 import (
 	"fmt"
-	"net/url"
 	"time"
-
-	"github.com/jdcasey/myshift-go/internal/pagerduty"
 )
 
 // NextCommand handles the "next" command functionality.
 type NextCommand struct {
-	client pagerduty.PagerDutyClient
+	*BaseCommand
 }
 
 // NewNextCommand creates a new NextCommand instance.
-func NewNextCommand(client pagerduty.PagerDutyClient) *NextCommand {
-	return &NextCommand{client: client}
+func NewNextCommand(ctx *CommandContext) *NextCommand {
+	return &NextCommand{
+		BaseCommand: NewBaseCommand(ctx.Client, ctx.Config, ctx.Writer),
+	}
 }
 
 // Execute runs the next command to show the next on-call shift for a user.
-func (n *NextCommand) Execute(scheduleID, userEmail string, days int) error {
-	if userEmail == "" {
-		return fmt.Errorf("user email is required")
+func (n *NextCommand) Execute(args []string) error {
+	parser := NewFlagParser("next").
+		AddUserFlag("", "User email address (uses my_user from config if not provided)").
+		AddDaysFlag(90, "Number of days to look ahead").
+		SetUsage(func() {
+			fmt.Print(`Usage: myshift next [options]
+
+Options:
+  --user string   User email address (uses my_user from config if not provided)
+  --days int      Number of days to look ahead (default: 90)
+
+`)
+		})
+
+	flags, err := parser.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	// If flags is nil, help was displayed - exit gracefully
+	if flags == nil {
+		return nil
+	}
+
+	// Get schedule ID
+	scheduleID, err := n.GetScheduleID()
+	if err != nil {
+		return err
 	}
 
 	// Find user by email
-	user, err := n.client.FindUserByEmail(userEmail)
+	user, err := n.ResolveUser(flags.User)
 	if err != nil {
-		return fmt.Errorf("error finding user: %w", err)
+		return err
 	}
 
 	// Calculate time range
 	now := time.Now()
-	until := now.AddDate(0, 0, days)
+	until := now.AddDate(0, 0, flags.Days)
 
 	// Get on-call shifts
-	params := url.Values{
-		"since":          []string{now.Format(time.RFC3339)},
-		"until":          []string{until.Format(time.RFC3339)},
-		"user_ids[]":     []string{user.ID},
-		"schedule_ids[]": []string{scheduleID},
-		"overflow":       []string{"true"},
-	}
-
-	onCalls, err := n.client.GetOnCalls(params)
+	onCalls, err := n.GetOnCallsForUser(scheduleID, user.ID, now, until)
 	if err != nil {
-		return fmt.Errorf("error fetching shifts: %w", err)
+		return err
 	}
 
 	if len(onCalls) == 0 {
-		fmt.Println("No upcoming shifts found")
+		fmt.Fprintln(n.writer, "No upcoming shifts found")
 		return nil
 	}
 
@@ -78,15 +94,26 @@ func (n *NextCommand) Execute(scheduleID, userEmail string, days int) error {
 
 	// Check if currently on call
 	if nextShift.Start.Before(now) && nextShift.End.After(now) {
-		fmt.Println("Currently on call")
-		fmt.Printf("Shift ends: %s\n", nextShift.End.Format("2006-01-02 15:04 MST"))
+		fmt.Fprintln(n.writer, "Currently on call")
+		fmt.Fprintf(n.writer, "Shift ends: %s\n", nextShift.End.Format("2006-01-02 15:04 MST"))
 	} else if nextShift.Start.After(now) {
-		fmt.Println("Next shift:")
-		fmt.Printf("Starts: %s\n", nextShift.Start.Format("2006-01-02 15:04 MST"))
-		fmt.Printf("Ends: %s\n", nextShift.End.Format("2006-01-02 15:04 MST"))
+		fmt.Fprintln(n.writer, "Next shift:")
+		fmt.Fprintf(n.writer, "Starts: %s\n", nextShift.Start.Format("2006-01-02 15:04 MST"))
+		fmt.Fprintf(n.writer, "Ends: %s\n", nextShift.End.Format("2006-01-02 15:04 MST"))
 	} else {
-		fmt.Println("No upcoming shifts found")
+		fmt.Fprintln(n.writer, "No upcoming shifts found")
 	}
 
 	return nil
+}
+
+// Usage returns the usage information for the next command
+func (n *NextCommand) Usage() string {
+	return `Usage: myshift next [options]
+
+Options:
+  --user string   User email address (uses my_user from config if not provided)
+  --days int      Number of days to look ahead (default: 90)
+
+`
 }

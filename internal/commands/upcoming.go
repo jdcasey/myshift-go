@@ -17,52 +17,68 @@ package commands
 
 import (
 	"fmt"
-	"io"
-	"net/url"
-	"os"
 	"time"
-
-	"github.com/jdcasey/myshift-go/internal/pagerduty"
 )
 
 // UpcomingCommand handles the "upcoming" command functionality.
 type UpcomingCommand struct {
-	client pagerduty.PagerDutyClient
+	*BaseCommand
 }
 
 // NewUpcomingCommand creates a new UpcomingCommand instance.
-func NewUpcomingCommand(client pagerduty.PagerDutyClient) *UpcomingCommand {
-	return &UpcomingCommand{client: client}
+func NewUpcomingCommand(ctx *CommandContext) *UpcomingCommand {
+	return &UpcomingCommand{
+		BaseCommand: NewBaseCommand(ctx.Client, ctx.Config, ctx.Writer),
+	}
 }
 
 // Execute runs the upcoming command to show all upcoming shifts for a user.
-func (u *UpcomingCommand) Execute(scheduleID, userEmail string, days int, formatter PlanFormatter, writer io.Writer) error {
-	if userEmail == "" {
-		return fmt.Errorf("user email is required")
+func (u *UpcomingCommand) Execute(args []string) error {
+	parser := NewFlagParser("upcoming").
+		AddUserFlag("", "User email address (uses my_user from config if not provided)").
+		AddDaysFlag(28, "Number of days to look ahead").
+		AddFormatFlag("text", "Output format (text, ical)").
+		SetUsage(func() {
+			fmt.Print(`Usage: myshift upcoming [options]
+
+Options:
+  --user string        User email address (uses my_user from config if not provided)
+  --days int           Number of days to look ahead (default: 28)
+  --format, -o string  Output format: text, ical (default: text)
+
+`)
+		})
+
+	flags, err := parser.Parse(args)
+	if err != nil {
+		return err
+	}
+
+	// If flags is nil, help was displayed - exit gracefully
+	if flags == nil {
+		return nil
+	}
+
+	// Get schedule ID
+	scheduleID, err := u.GetScheduleID()
+	if err != nil {
+		return err
 	}
 
 	// Find user by email
-	user, err := u.client.FindUserByEmail(userEmail)
+	user, err := u.ResolveUser(flags.User)
 	if err != nil {
-		return fmt.Errorf("error finding user: %w", err)
+		return err
 	}
 
 	// Calculate time range
 	now := time.Now()
-	until := now.AddDate(0, 0, days)
+	until := now.AddDate(0, 0, flags.Days)
 
 	// Get on-call shifts
-	params := url.Values{
-		"since":          []string{now.Format(time.RFC3339)},
-		"until":          []string{until.Format(time.RFC3339)},
-		"user_ids[]":     []string{user.ID},
-		"schedule_ids[]": []string{scheduleID},
-		"overflow":       []string{"true"},
-	}
-
-	onCalls, err := u.client.GetOnCalls(params)
+	onCalls, err := u.GetOnCallsForUser(scheduleID, user.ID, now, until)
 	if err != nil {
-		return fmt.Errorf("error fetching shifts: %w", err)
+		return err
 	}
 
 	// Create user map with the user we already fetched
@@ -70,11 +86,24 @@ func (u *UpcomingCommand) Execute(scheduleID, userEmail string, days int, format
 		user.ID: user.Name,
 	}
 
-	// If no writer is provided, default to stdout
-	if writer == nil {
-		writer = os.Stdout
+	// Get the appropriate formatter
+	formatter, err := GetFormatter(flags.Format)
+	if err != nil {
+		return err
 	}
 
 	// Use the formatter to output the data
-	return formatter.Format(writer, onCalls, userMap, now, until)
+	return formatter.Format(u.writer, onCalls, userMap, now, until)
+}
+
+// Usage returns the usage information for the upcoming command
+func (u *UpcomingCommand) Usage() string {
+	return `Usage: myshift upcoming [options]
+
+Options:
+  --user string        User email address (uses my_user from config if not provided)
+  --days int           Number of days to look ahead (default: 28)
+  --format, -o string  Output format: text, ical (default: text)
+
+`
 }

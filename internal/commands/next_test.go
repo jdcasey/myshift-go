@@ -15,48 +15,43 @@
 package commands
 
 import (
-	"io"
-	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/jdcasey/myshift-go/internal/types"
 )
 
 func TestNextCommand_Execute(t *testing.T) {
 	tests := []struct {
 		testName   string
-		userEmail  string
-		days       int
+		args       []string
 		setupMock  func(*MockPagerDutyClient, time.Time)
 		wantErr    bool
 		wantOutput []string
 	}{
 		{
-			testName:  "user not found",
-			userEmail: "nonexistent@example.com",
-			days:      90,
+			testName: "user not found",
+			args:     []string{"--user", "nonexistent@example.com"},
 			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
-				// No users added
+				// Clear default user
+				mock.users = make(map[string]*types.User)
 			},
 			wantErr: true,
 		},
 		{
-			testName:  "no upcoming shifts",
-			userEmail: "john@example.com",
-			days:      90,
+			testName: "no upcoming shifts",
+			args:     []string{"--user", "john@example.com"},
 			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
-				mock.AddUser("USER001", "John Doe", "john@example.com")
-				// No shifts added
+				// User exists but no shifts added
 			},
 			wantErr:    false,
 			wantOutput: []string{"No upcoming shifts found"},
 		},
 		{
-			testName:  "next shift in future",
-			userEmail: "john@example.com",
-			days:      90,
+			testName: "next shift in future",
+			args:     []string{"--user", "john@example.com"},
 			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
-				mock.AddUser("USER001", "John Doe", "john@example.com")
 				tomorrow := now.Add(24 * time.Hour)
 				mock.AddOnCall("USER001", "John Doe", "john@example.com",
 					tomorrow, tomorrow.Add(8*time.Hour))
@@ -69,11 +64,9 @@ func TestNextCommand_Execute(t *testing.T) {
 			},
 		},
 		{
-			testName:  "currently on call",
-			userEmail: "john@example.com",
-			days:      90,
+			testName: "currently on call",
+			args:     []string{"--user", "john@example.com"},
 			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
-				mock.AddUser("USER001", "John Doe", "john@example.com")
 				// Shift started 2 hours ago, ends in 6 hours
 				mock.AddOnCall("USER001", "John Doe", "john@example.com",
 					now.Add(-2*time.Hour), now.Add(6*time.Hour))
@@ -85,11 +78,9 @@ func TestNextCommand_Execute(t *testing.T) {
 			},
 		},
 		{
-			testName:  "multiple shifts - finds earliest",
-			userEmail: "john@example.com",
-			days:      90,
+			testName: "multiple shifts - finds earliest",
+			args:     []string{"--user", "john@example.com"},
 			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
-				mock.AddUser("USER001", "John Doe", "john@example.com")
 				tomorrow := now.Add(24 * time.Hour)
 				dayAfter := now.Add(48 * time.Hour)
 
@@ -106,11 +97,18 @@ func TestNextCommand_Execute(t *testing.T) {
 			},
 		},
 		{
-			testName:  "empty email",
-			userEmail: "",
-			days:      90,
-			setupMock: func(mock *MockPagerDutyClient, now time.Time) {},
-			wantErr:   true,
+			testName: "uses default user from config",
+			args:     []string{},
+			setupMock: func(mock *MockPagerDutyClient, now time.Time) {
+				tomorrow := now.Add(24 * time.Hour)
+				mock.AddOnCall("USER001", "John Doe", "john@example.com",
+					tomorrow, tomorrow.Add(8*time.Hour))
+			},
+			wantErr: false,
+			wantOutput: []string{
+				"Next shift:",
+				"Starts:",
+			},
 		},
 	}
 
@@ -120,21 +118,10 @@ func TestNextCommand_Execute(t *testing.T) {
 			fixture := NewTestFixture()
 			tt.setupMock(fixture.MockClient, fixture.Now)
 
-			cmd := NewNextCommand(fixture.MockClient)
-
-			// Capture output
-			oldStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
+			cmd := NewNextCommand(fixture.Context)
 
 			// Execute
-			err := cmd.Execute("SCHED123", tt.userEmail, tt.days)
-
-			// Restore stdout and read output
-			w.Close()
-			os.Stdout = oldStdout
-			output, _ := io.ReadAll(r)
-			outputStr := string(output)
+			err := cmd.Execute(tt.args)
 
 			// Verify error expectation
 			if (err != nil) != tt.wantErr {
@@ -144,20 +131,8 @@ func TestNextCommand_Execute(t *testing.T) {
 
 			// Verify output if no error expected
 			if !tt.wantErr {
-				for _, expectedLine := range tt.wantOutput {
-					if !strings.Contains(outputStr, expectedLine) {
-						t.Errorf("Expected output to contain %q, got:\n%s", expectedLine, outputStr)
-					}
-				}
-			}
-
-			// Verify API calls were made correctly
-			if tt.userEmail != "" && !tt.wantErr {
-				if len(fixture.MockClient.FindUserByEmailCalls) == 0 {
-					t.Error("Expected FindUserByEmail to be called")
-				} else if fixture.MockClient.FindUserByEmailCalls[0] != tt.userEmail {
-					t.Errorf("Expected FindUserByEmail to be called with %q, got %q",
-						tt.userEmail, fixture.MockClient.FindUserByEmailCalls[0])
+				if !fixture.ContainsOutput(tt.wantOutput...) {
+					t.Errorf("Expected output to contain %v, got:\n%s", tt.wantOutput, fixture.GetOutput())
 				}
 			}
 		})
@@ -166,61 +141,61 @@ func TestNextCommand_Execute(t *testing.T) {
 
 func TestNextCommand_Execute_TimeHandling(t *testing.T) {
 	// Test that demonstrates time handling - this test focuses on the logic, not exact times
-	mockClient := NewMockPagerDutyClient()
-	mockClient.AddUser("USER001", "John Doe", "john@example.com")
+	fixture := NewTestFixture()
 
 	// Add a shift that's currently active relative to when the command runs
-	now := time.Now()
+	now := fixture.Now
 	shiftStart := now.Add(-1 * time.Hour) // Started 1 hour ago
 	shiftEnd := now.Add(2 * time.Hour)    // Ends in 2 hours
-	mockClient.AddOnCall("USER001", "John Doe", "john@example.com", shiftStart, shiftEnd)
+	fixture.MockClient.AddOnCall("USER001", "John Doe", "john@example.com", shiftStart, shiftEnd)
 
-	cmd := NewNextCommand(mockClient)
+	cmd := NewNextCommand(fixture.Context)
 
-	// Capture output
-	oldStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-
-	err := cmd.Execute("SCHED123", "john@example.com", 90)
-
-	w.Close()
-	os.Stdout = oldStdout
-	output, _ := io.ReadAll(r)
-	outputStr := string(output)
+	err := cmd.Execute([]string{"--user", "john@example.com"})
 
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
 
-	if !strings.Contains(outputStr, "Currently on call") {
-		t.Errorf("Expected 'Currently on call' in output, got: %s", outputStr)
+	if !fixture.ContainsOutput("Currently on call") {
+		t.Errorf("Expected 'Currently on call' in output, got: %s", fixture.GetOutput())
 	}
 
-	if !strings.Contains(outputStr, "Shift ends:") {
-		t.Errorf("Expected 'Shift ends:' in output, got: %s", outputStr)
+	if !fixture.ContainsOutput("Shift ends:") {
+		t.Errorf("Expected 'Shift ends:' in output, got: %s", fixture.GetOutput())
 	}
 }
 
 func TestNextCommand_Execute_ValidationErrors(t *testing.T) {
 	tests := []struct {
 		testName       string
-		userEmail      string
+		args           []string
+		setupMock      func(*MockPagerDutyClient)
 		expectedErrMsg string
 	}{
 		{
-			testName:       "empty email",
-			userEmail:      "",
+			testName: "no user configured and no user flag",
+			args:     []string{},
+			setupMock: func(mock *MockPagerDutyClient) {
+				// Clear default user from config
+				mock.users = make(map[string]*types.User)
+			},
 			expectedErrMsg: "user email is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
-			mockClient := NewMockPagerDutyClient()
-			cmd := NewNextCommand(mockClient)
+			fixture := NewTestFixture()
+			if tt.setupMock != nil {
+				tt.setupMock(fixture.MockClient)
+			}
+			// Clear my_user from config to test validation
+			fixture.Config.MyUser = ""
 
-			err := cmd.Execute("SCHED123", tt.userEmail, 90)
+			cmd := NewNextCommand(fixture.Context)
+
+			err := cmd.Execute(tt.args)
 
 			if err == nil {
 				t.Error("Expected error but got none")
@@ -238,15 +213,11 @@ func TestNextCommand_Execute_ValidationErrors(t *testing.T) {
 // Benchmark to ensure performance is reasonable
 func BenchmarkNextCommand_Execute(b *testing.B) {
 	fixture := NewTestFixture()
-	cmd := NewNextCommand(fixture.MockClient)
-
-	// Silence output for benchmarking
-	oldStdout := os.Stdout
-	os.Stdout, _ = os.Open(os.DevNull)
-	defer func() { os.Stdout = oldStdout }()
+	cmd := NewNextCommand(fixture.Context)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = cmd.Execute("SCHED123", "john@example.com", 90)
+		fixture.ClearOutput()
+		_ = cmd.Execute([]string{"--user", "john@example.com"})
 	}
 }

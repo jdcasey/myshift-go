@@ -16,6 +16,7 @@ package commands
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -275,6 +276,101 @@ func TestGetFormatter(t *testing.T) {
 			testErr := formatter.Format(&buf, []types.OnCall{}, map[string]string{}, time.Now(), time.Now())
 			if testErr != nil {
 				t.Errorf("Formatter returned by GetFormatter(%q) failed to format: %v", tt.format, testErr)
+			}
+		})
+	}
+}
+
+func TestDeduplicateOnCalls(t *testing.T) {
+	// Test data setup
+	now := time.Now()
+	user1 := types.User{ID: "USER001", Name: "John Doe", Email: "john@example.com"}
+	user2 := types.User{ID: "USER002", Name: "Jane Smith", Email: "jane@example.com"}
+	schedule1 := types.Schedule{ID: "SCHED001", Name: "Test Schedule 1"}
+	schedule2 := types.Schedule{ID: "SCHED002", Name: "Test Schedule 2"}
+
+	tests := []struct {
+		name     string
+		input    []types.OnCall
+		expected int // expected number of unique shifts
+	}{
+		{
+			name:     "empty slice",
+			input:    []types.OnCall{},
+			expected: 0,
+		},
+		{
+			name: "no duplicates",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now.Add(24 * time.Hour), End: now.Add(32 * time.Hour), User: user2, Schedule: schedule1},
+			},
+			expected: 2,
+		},
+		{
+			name: "exact duplicates",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1}, // duplicate
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1}, // duplicate
+			},
+			expected: 1,
+		},
+		{
+			name: "same user and time, different schedules",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule2}, // different schedule
+			},
+			expected: 2,
+		},
+		{
+			name: "same schedule and time, different users",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now, End: now.Add(8 * time.Hour), User: user2, Schedule: schedule1}, // different user
+			},
+			expected: 2,
+		},
+		{
+			name: "same user and schedule, different times",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now.Add(24 * time.Hour), End: now.Add(32 * time.Hour), User: user1, Schedule: schedule1}, // different time
+			},
+			expected: 2,
+		},
+		{
+			name: "mixed duplicates and unique",
+			input: []types.OnCall{
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},
+				{Start: now, End: now.Add(8 * time.Hour), User: user1, Schedule: schedule1},                      // duplicate
+				{Start: now.Add(24 * time.Hour), End: now.Add(32 * time.Hour), User: user2, Schedule: schedule1}, // unique
+				{Start: now.Add(24 * time.Hour), End: now.Add(32 * time.Hour), User: user2, Schedule: schedule1}, // duplicate of above
+			},
+			expected: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := DeduplicateOnCalls(tt.input)
+			if len(result) != tt.expected {
+				t.Errorf("DeduplicateOnCalls() returned %d items, expected %d", len(result), tt.expected)
+			}
+
+			// Verify no duplicates in result
+			seen := make(map[string]bool)
+			for _, shift := range result {
+				key := fmt.Sprintf("%s-%s-%s-%s",
+					shift.User.ID,
+					shift.Schedule.ID,
+					shift.Start.Format(time.RFC3339),
+					shift.End.Format(time.RFC3339))
+				if seen[key] {
+					t.Errorf("Found duplicate in result: %s", key)
+				}
+				seen[key] = true
 			}
 		})
 	}

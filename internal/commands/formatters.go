@@ -45,7 +45,7 @@ func (f *TextFormatter) Format(writer io.Writer, shifts []types.OnCall, userMap 
 		return err
 	}
 
-	days := int(end.Sub(start).Hours()/24) + 1
+	days := int(end.Sub(start).Hours() / 24)
 	_, err := fmt.Fprintf(writer, "Shifts for the next %d days:\n", days)
 	if err != nil {
 		return err
@@ -188,4 +188,32 @@ func GetFormatter(format string) (PlanFormatter, error) {
 	default:
 		return nil, fmt.Errorf("unsupported format: %s (supported: text, ical)", format)
 	}
+}
+
+// DeduplicateOnCalls removes duplicate OnCall entries that have the same
+// user, schedule, start time, and end time. This is needed because PagerDuty
+// returns duplicate entries for schedules with multiple escalation paths.
+func DeduplicateOnCalls(onCalls []types.OnCall) []types.OnCall {
+	if len(onCalls) == 0 {
+		return onCalls
+	}
+
+	seenShifts := make(map[string]bool)
+	var uniqueShifts []types.OnCall
+
+	for _, shift := range onCalls {
+		// Create a unique key based on user, schedule, start, and end times
+		key := fmt.Sprintf("%s-%s-%s-%s",
+			shift.User.ID,
+			shift.Schedule.ID,
+			shift.Start.Format(time.RFC3339),
+			shift.End.Format(time.RFC3339))
+
+		if !seenShifts[key] {
+			seenShifts[key] = true
+			uniqueShifts = append(uniqueShifts, shift)
+		}
+	}
+
+	return uniqueShifts
 }
