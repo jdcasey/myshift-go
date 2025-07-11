@@ -167,9 +167,22 @@ jobs:
         with:
           fetch-depth: 0  # Fetch full history for changelog generation
 
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find artifacts -name "myshift-*" -type f | while read file; do
+            cp "$file" release-assets/
+          done
+          ls -la release-assets/
+
       - name: Create release with notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create $GITHUB_REF_NAME --generate-notes
+          gh release create $GITHUB_REF_NAME --generate-notes release-assets/*
   
