@@ -162,7 +162,7 @@ myshift-go/
 
 ### Prerequisites
 
-- Go 1.19 or later
+- Go 1.21 or later
 
 ### Building
 
